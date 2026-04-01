@@ -1,5 +1,5 @@
 import { IconName, ItemView, WorkspaceLeaf } from "obsidian";
-import { type FormEvent, StrictMode, useState } from "react";
+import { type FormEvent, StrictMode, useState, useSyncExternalStore } from "react";
 import { Root, createRoot } from "react-dom/client";
 import type { PluginAppAccess } from "../main";
 import type { PanelGenerationResult } from "../services/runtime";
@@ -25,7 +25,11 @@ type GenerationState =
 const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => {
   const [prompt, setPrompt] = useState("");
   const [state, setState] = useState<GenerationState>({ tag: "idle" });
-  const settings = appAccess.getSettings();
+  const settings = useSyncExternalStore(
+    appAccess.subscribeSettings,
+    appAccess.getSettings,
+    appAccess.getSettings,
+  );
 
   const submitPrompt = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

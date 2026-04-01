@@ -13,6 +13,7 @@ import { VIEW_TYPE, PanelView } from "./ui/PanelView";
 export interface PluginAppAccess {
   readonly openPanel: () => Promise<void>;
   readonly getSettings: () => PersistedSettings;
+  readonly subscribeSettings: (onStoreChange: () => void) => () => void;
   readonly generatePanelResponse: (prompt: string) => Promise<PanelGenerationResult>;
   readonly saveGeneratedResponse: (response: string) => Promise<PanelSaveResult>;
 }
@@ -20,9 +21,11 @@ export interface PluginAppAccess {
 export default class ProvenancePlugin extends Plugin {
   settings: PersistedSettings = DEFAULT_SETTINGS;
   runtime: PluginRuntime | null = null;
+  private readonly settingsListeners = new Set<() => void>();
   readonly appAccess: PluginAppAccess = {
     openPanel: () => this.openPanel(),
     getSettings: () => this.settings,
+    subscribeSettings: (onStoreChange) => this.subscribeSettings(onStoreChange),
     generatePanelResponse: (prompt) => this.runGeneratePanelResponse(prompt),
     saveGeneratedResponse: (response) => this.runSaveGeneratedResponse(response),
   };
@@ -47,13 +50,39 @@ export default class ProvenancePlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
+  async updateSettings(settings: PersistedSettings): Promise<void> {
+    this.settings = settings;
+    await this.saveData(this.settings);
+    this.rebuildRuntime();
+    this.notifySettingsChanged();
+  }
+
   private createRuntime(): PluginRuntime {
     return makePluginRuntime({ plugin: this, settings: this.settings });
+  }
+
+  private rebuildRuntime(): void {
+    this.disposeRuntime();
+    this.runtime = this.createRuntime();
   }
 
   private disposeRuntime(): void {
     this.runtime?.dispose();
     this.runtime = null;
+  }
+
+  private subscribeSettings(onStoreChange: () => void): () => void {
+    this.settingsListeners.add(onStoreChange);
+
+    return () => {
+      this.settingsListeners.delete(onStoreChange);
+    };
+  }
+
+  private notifySettingsChanged(): void {
+    for (const listener of this.settingsListeners) {
+      listener();
+    }
   }
 
   private getRuntime(): PluginRuntime {

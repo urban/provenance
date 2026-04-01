@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import type ProvenancePlugin from "../main";
 import { type PersistedSettings } from "../config";
 
@@ -5,18 +6,26 @@ const isLlmMode = (value: string): value is PersistedSettings["llmMode"] =>
   value === "disabled" || value === "mock" || value === "pi";
 
 export const SettingsView = ({ plugin }: { plugin: ProvenancePlugin }) => {
+  const settings = useSyncExternalStore(
+    (onStoreChange) => plugin.appAccess.subscribeSettings(onStoreChange),
+    () => plugin.appAccess.getSettings(),
+    () => plugin.appAccess.getSettings(),
+  );
+
   return (
     <div>
       <h2>LLM mode</h2>
       <p>Choose how Provenance should generate research artifacts.</p>
       <select
-        value={plugin.settings.llmMode}
+        value={settings.llmMode}
         onChange={async (e) => {
           const value = e.target.value;
           if (!isLlmMode(value)) return;
 
-          plugin.settings.llmMode = value;
-          await plugin.saveSettings();
+          await plugin.updateSettings({
+            ...plugin.appAccess.getSettings(),
+            llmMode: value,
+          });
         }}
       >
         <option value="disabled">Disabled</option>
@@ -29,10 +38,12 @@ export const SettingsView = ({ plugin }: { plugin: ProvenancePlugin }) => {
       <input
         type="text"
         placeholder=".provenance/knowledge/research"
-        value={plugin.settings.llmOutputPath}
+        value={settings.llmOutputPath}
         onChange={async (e) => {
-          plugin.settings.llmOutputPath = e.target.value;
-          await plugin.saveSettings();
+          await plugin.updateSettings({
+            ...plugin.appAccess.getSettings(),
+            llmOutputPath: e.target.value,
+          });
         }}
       />
     </div>
