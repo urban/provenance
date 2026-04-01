@@ -17,7 +17,8 @@
 }
 
 .provenance-panel__header p,
-.provenance-panel__placeholder {
+.provenance-panel__placeholder,
+.provenance-panel__status-message {
   margin: 0;
   color: var(--text-muted);
 }
@@ -63,6 +64,11 @@
 
 .provenance-panel__status[data-state="info"] {
   border-color: var(--interactive-accent);
+}
+
+.provenance-panel__status-title {
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .provenance-panel__response {

@@ -1,5 +1,6 @@
 import type { LLMResponse } from "@urban/provenance-shared";
 import { Effect, Layer, Schema } from "effect";
+import { GenerationFailure, InvalidConfigurationFailure } from "../errors/ResearchWorkflowFailure";
 import { LLMGateway, type GenerateResearchInput } from "./LLMGateway";
 
 export interface PiGatewayConfig {
@@ -55,17 +56,19 @@ const buildUserPrompt = (input: GenerateResearchInput): string => {
 
 const extractResearchResponse = (
   response: Schema.Schema.Type<typeof PiCompletionResponseSchema>,
-): Effect.Effect<LLMResponse> => {
+): Effect.Effect<LLMResponse, GenerationFailure> => {
   const firstChoice = response.choices[0];
 
   if (firstChoice === undefined) {
-    return Effect.die(new Error("Pi API returned no completion choices."));
+    return Effect.fail(
+      new GenerationFailure({ message: "Pi API returned no completion choices." }),
+    );
   }
 
   const content = normalizeWhitespace(firstChoice.message.content);
 
   if (content.length === 0) {
-    return Effect.die(new Error("Pi API returned an empty completion."));
+    return Effect.fail(new GenerationFailure({ message: "Pi API returned an empty completion." }));
   }
 
   return Effect.succeed({
@@ -87,47 +90,59 @@ export const makePiLLMGatewayLayer = (
     LLMGateway,
     LLMGateway.of({
       generateResearch: (input) =>
-        Effect.tryPromise({
-          try: async () => {
-            const response = await fetch(baseUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${config.apiKey}`,
-              },
-              body: JSON.stringify({
-                model,
-                messages: [
-                  {
-                    role: "system",
-                    content: buildSystemPrompt(),
-                  },
-                  {
-                    role: "user",
-                    content: buildUserPrompt(input),
-                  },
-                ],
+        config.apiKey.trim().length === 0
+          ? Effect.fail(
+              new InvalidConfigurationFailure({
+                message: "Pi mode requires a Pi API key in plugin settings.",
               }),
-            });
+            )
+          : Effect.tryPromise({
+              try: async () => {
+                const response = await fetch(baseUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${config.apiKey}`,
+                  },
+                  body: JSON.stringify({
+                    model,
+                    messages: [
+                      {
+                        role: "system",
+                        content: buildSystemPrompt(),
+                      },
+                      {
+                        role: "user",
+                        content: buildUserPrompt(input),
+                      },
+                    ],
+                  }),
+                });
 
-            if (!response.ok) {
-              throw new Error(`Pi API request failed with status ${response.status}.`);
-            }
+                if (!response.ok) {
+                  throw new Error(`Pi API request failed with status ${response.status}.`);
+                }
 
-            return response.json();
-          },
-          catch: (error) =>
-            error instanceof Error ? error : new Error("Pi API request failed unexpectedly."),
-        }).pipe(
-          Effect.orDie,
-          Effect.flatMap((payload) =>
-            Schema.decodeUnknownEffect(PiCompletionResponseSchema)(payload).pipe(
-              Effect.mapError(() => new Error("Pi API returned an invalid completion payload.")),
-              Effect.orDie,
+                return response.json();
+              },
+              catch: (error) =>
+                new GenerationFailure({
+                  message:
+                    error instanceof Error ? error.message : "Pi API request failed unexpectedly.",
+                }),
+            }).pipe(
+              Effect.flatMap((payload) =>
+                Schema.decodeUnknownEffect(PiCompletionResponseSchema)(payload).pipe(
+                  Effect.mapError(
+                    () =>
+                      new GenerationFailure({
+                        message: "Pi API returned an invalid completion payload.",
+                      }),
+                  ),
+                ),
+              ),
+              Effect.flatMap(extractResearchResponse),
             ),
-          ),
-          Effect.flatMap(extractResearchResponse),
-        ),
     }),
   );
 };

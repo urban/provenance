@@ -3,6 +3,7 @@ import { type FormEvent, StrictMode, useState, useSyncExternalStore } from "reac
 import { Root, createRoot } from "react-dom/client";
 import type { PluginAppAccess } from "../main";
 import type { PanelGenerationResult } from "../services/runtime";
+import { describePanelGenerationError, type PanelFailureCopy } from "./panelFailure";
 
 export const VIEW_TYPE = "provenance-view";
 
@@ -15,7 +16,7 @@ type SaveState =
 type GenerationState =
   | { readonly tag: "idle" }
   | { readonly tag: "loading" }
-  | { readonly tag: "error"; readonly message: string }
+  | { readonly tag: "error"; readonly failure: PanelFailureCopy }
   | {
       readonly tag: "success";
       readonly response: PanelGenerationResult;
@@ -36,7 +37,13 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
 
     const trimmedPrompt = prompt.trim();
     if (trimmedPrompt.length === 0) {
-      setState({ tag: "error", message: "Enter a prompt before generating a response." });
+      setState({
+        tag: "error",
+        failure: {
+          title: "Prompt required",
+          message: "Enter a prompt before generating a response.",
+        },
+      });
       return;
     }
 
@@ -50,8 +57,7 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
         save: { tag: "idle" },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Generation failed.";
-      setState({ tag: "error", message });
+      setState({ tag: "error", failure: describePanelGenerationError(error) });
     }
   };
 
@@ -128,7 +134,8 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
 
       {state.tag === "error" ? (
         <div className="provenance-panel__status" data-state="error">
-          {state.message}
+          <div className="provenance-panel__status-title">{state.failure.title}</div>
+          <p className="provenance-panel__status-message">{state.failure.message}</p>
         </div>
       ) : null}
 

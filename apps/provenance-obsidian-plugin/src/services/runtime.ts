@@ -1,4 +1,5 @@
 import {
+  InvalidConfigurationFailure,
   generateResearchResponse,
   LLMGateway,
   makePiLLMGatewayLayer,
@@ -35,7 +36,12 @@ export interface PluginRuntime {
 const disabledLLMGatewayLayer = Layer.succeed(
   LLMGateway,
   LLMGateway.of({
-    generateResearch: () => Effect.die(new Error("LLM mode is disabled in plugin settings.")),
+    generateResearch: () =>
+      Effect.fail(
+        new InvalidConfigurationFailure({
+          message: "LLM mode is disabled in plugin settings.",
+        }),
+      ),
   }),
 );
 
@@ -43,16 +49,6 @@ const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
-
-const resolvePiApiKey = (settings: RuntimeOptions["settings"]): string => {
-  const configuredApiKey = settings.piApiKey.trim();
-
-  if (configuredApiKey.length === 0) {
-    throw new Error("Pi mode requires a Pi API key in plugin settings.");
-  }
-
-  return configuredApiKey;
-};
 
 const makeLLMGatewayLayer = (
   settings: RuntimeOptions["settings"],
@@ -64,7 +60,7 @@ const makeLLMGatewayLayer = (
       return mockLLMGatewayLayer;
     case "pi":
       return makePiLLMGatewayLayer({
-        apiKey: resolvePiApiKey(settings),
+        apiKey: settings.piApiKey,
         model: settings.piModel,
       });
   }

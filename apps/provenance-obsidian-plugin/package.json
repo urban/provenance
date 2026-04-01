@@ -9,7 +9,7 @@
     "check": "bun run lint && bun run typecheck && bun run test",
     "clean": "rm -rf ./dist",
     "lint": "oxfmt && oxlint --fix",
-    "test": "node -e \"console.log('No plugin tests wired yet')\"",
+    "test": "bun test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

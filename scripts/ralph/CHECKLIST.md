@@ -13,7 +13,7 @@ Source: `.specs/plugin-mvp/tasks.md`
 - [x] PMVP-T5 — Separate generate-response behavior from save-artifact behavior in the engine
 - [x] PMVP-T6 — Implement deterministic mock generation mode
 - [x] PMVP-T7 — Implement Pi-backed generation mode behind the shared gateway contract
-- [ ] PMVP-T8 — Surface typed workflow failures to the UI
+- [x] PMVP-T8 — Surface typed workflow failures to the UI
 - [ ] PMVP-T9 — Implement artifact writing from generated response to markdown file
 - [ ] PMVP-T10 — Enforce guarded write boundaries before filesystem mutation
 - [ ] PMVP-T11 — Finalize artifact metadata and naming policy for repeat saves

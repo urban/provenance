@@ -1,3 +1,4 @@
+export * from "./errors/ResearchWorkflowFailure";
 export * from "./services/ActiveNoteReader";
 export * from "./services/ArtifactWriter";
 export * from "./services/LLMGateway";

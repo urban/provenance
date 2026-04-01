@@ -5,11 +5,14 @@ import {
   ActiveNoteReader,
   ArtifactWriter,
   generateResearchArtifact,
+  GenerationFailure,
   generateResearchResponse,
+  InvalidConfigurationFailure,
   LLMGateway,
   makePiLLMGatewayLayer,
   makeMockResearchResponse,
   makeResearchArtifactDraft,
+  MissingActiveNoteFailure,
   mockLLMGatewayLayer,
   saveResearchArtifact,
 } from "../src";
@@ -56,6 +59,69 @@ const artifactWriterLayer = Layer.succeed(
 );
 
 describe("engine workflows", () => {
+  test("generateResearchResponse fails with a typed missing-active-note error", async () => {
+    const missingActiveNoteLayer = Layer.succeed(
+      ActiveNoteReader,
+      ActiveNoteReader.of({
+        getActiveNote: Effect.fail(
+          new MissingActiveNoteFailure({
+            message: "Open a markdown note before generating a response.",
+          }),
+        ),
+      }),
+    );
+
+    await expect(
+      Effect.runPromise(
+        generateResearchResponse("Summarize the note").pipe(
+          Effect.provide(missingActiveNoteLayer),
+          Effect.provide(llmGatewayLayer),
+        ),
+      ),
+    ).rejects.toMatchObject({
+      _tag: "MissingActiveNoteFailure",
+      message: "Open a markdown note before generating a response.",
+    });
+  });
+
+  test("pi llm gateway fails with a typed invalid-configuration error when the api key is missing", async () => {
+    await expect(
+      Effect.runPromise(
+        generateResearchResponse("Summarize the note").pipe(
+          Effect.provide(activeNoteReaderLayer),
+          Effect.provide(
+            makePiLLMGatewayLayer({
+              apiKey: "   ",
+              model: "gpt-4.1-mini",
+            }),
+          ),
+        ),
+      ),
+    ).rejects.toBeInstanceOf(InvalidConfigurationFailure);
+  });
+
+  test("generateResearchResponse preserves typed generation failures from the gateway", async () => {
+    const failingGatewayLayer = Layer.succeed(
+      LLMGateway,
+      LLMGateway.of({
+        generateResearch: () =>
+          Effect.fail(new GenerationFailure({ message: "Pi API request failed with status 502." })),
+      }),
+    );
+
+    await expect(
+      Effect.runPromise(
+        generateResearchResponse("Summarize the note").pipe(
+          Effect.provide(activeNoteReaderLayer),
+          Effect.provide(failingGatewayLayer),
+        ),
+      ),
+    ).rejects.toMatchObject({
+      _tag: "GenerationFailure",
+      message: "Pi API request failed with status 502.",
+    });
+  });
+
   test("mock llm gateway returns a deterministic research response from note context", async () => {
     const result = await Effect.runPromise(
       generateResearchResponse("Summarize the note").pipe(
@@ -238,7 +304,10 @@ describe("engine workflows", () => {
             ),
           ),
         ),
-      ).rejects.toThrow("Pi API returned no completion choices.");
+      ).rejects.toMatchObject({
+        _tag: "GenerationFailure",
+        message: "Pi API returned no completion choices.",
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }
