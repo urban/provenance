@@ -6,7 +6,7 @@ Execution rule: complete tasks in order. Do not start the next task until the cu
 
 Source: `.specs/plugin-mvp/tasks.md`
 
-- [ ] PMVP-T1 — Replace the placeholder panel with a minimal interactive prompt-and-response flow
+- [x] PMVP-T1 — Replace the placeholder panel with a minimal interactive prompt-and-response flow
 - [ ] PMVP-T2 — Assemble the plugin runtime once and expose workflow access to commands and views
 - [ ] PMVP-T3 — Add an Obsidian-backed active-note adapter
 - [ ] PMVP-T4 — Thread persisted settings into runtime creation and live panel behavior

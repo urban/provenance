@@ -1,2 +1,4 @@
 # Ralph Auto Progress Log
 # This file tracks autonomous task completions
+2026-04-01T23:29:00Z Started PMVP-T1. Verified no critical steering work is pending and began replacing the placeholder Provenance panel with a minimal prompt/response UI while keeping runtime and engine changes out of scope for later tasks.
+2026-04-01T23:34:00Z Completed PMVP-T1. The Provenance panel now supports prompt entry, loading/error/response states, and a visible save-artifact action backed by thin runtime stubs. Workspace typecheck and tests passed; full `bun run check` is currently blocked in this environment because `oxfmt` cannot load its native Linux binding.

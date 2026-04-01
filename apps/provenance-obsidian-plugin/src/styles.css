@@ -1,8 +1,78 @@
-/*
+.provenance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.provenance-panel__header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-If your plugin does not need CSS, delete this file.
+.provenance-panel__header h3,
+.provenance-panel__response-header {
+  margin: 0;
+}
 
-*/
+.provenance-panel__header p,
+.provenance-panel__placeholder {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.provenance-panel__form,
+.provenance-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.provenance-panel__textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.provenance-panel__actions,
+.provenance-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provenance-panel__meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+}
+
+.provenance-panel__response,
+.provenance-panel__status {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.provenance-panel__status[data-state="loading"] {
+  background: var(--background-secondary);
+}
+
+.provenance-panel__status[data-state="error"] {
+  border-color: var(--text-error);
+}
+
+.provenance-panel__status[data-state="info"] {
+  border-color: var(--interactive-accent);
+}
+
+.provenance-panel__response {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.provenance-panel__response-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

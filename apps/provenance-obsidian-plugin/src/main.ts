@@ -1,12 +1,18 @@
 import { Plugin } from "obsidian";
 import { registerOpenPanelCommand } from "./commands/openPanel";
-import { makePluginRuntime } from "./services/runtime";
+import {
+  makePluginRuntime,
+  type PanelGenerationResult,
+  type PanelSaveResult,
+  type PluginRuntime,
+} from "./services/runtime";
 import { SettingTab } from "./settings";
 import { DEFAULT_SETTINGS, type PersistedSettings } from "./config";
 import { VIEW_TYPE, PanelView } from "./ui/PanelView";
 
 export default class ProvenancePlugin extends Plugin {
   settings: PersistedSettings = DEFAULT_SETTINGS;
+  runtime: PluginRuntime | null = null;
 
   async onload(): Promise<void> {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
@@ -31,11 +37,27 @@ export default class ProvenancePlugin extends Plugin {
       await this.app.workspace.revealLeaf(leaf);
     });
 
-    const runtime = makePluginRuntime({ plugin: this, settings: this.settings });
-    this.register(() => runtime.dispose());
+    this.runtime = makePluginRuntime({ plugin: this, settings: this.settings });
+    this.register(() => this.runtime?.dispose());
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+  }
+
+  async generatePanelResponse(prompt: string): Promise<PanelGenerationResult> {
+    if (this.runtime === null) {
+      throw new Error("Plugin runtime is not available.");
+    }
+
+    return this.runtime.generatePanelResponse(prompt);
+  }
+
+  async saveGeneratedResponse(response: string): Promise<PanelSaveResult> {
+    if (this.runtime === null) {
+      throw new Error("Plugin runtime is not available.");
+    }
+
+    return this.runtime.saveGeneratedResponse(response);
   }
 }
