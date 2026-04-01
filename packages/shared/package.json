@@ -1,0 +1,23 @@
+{
+  "name": "@urban/provenance-shared",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "src/**/*.ts"
+  ],
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "bun run lint && bun run typecheck && bun run test",
+    "lint": "oxfmt && oxlint --fix",
+    "test": "node -e \"console.log('No shared tests wired yet')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.43"
+  }
+}
