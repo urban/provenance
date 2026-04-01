@@ -1,7 +1,7 @@
 import { IconName, ItemView, WorkspaceLeaf } from "obsidian";
 import { type FormEvent, StrictMode, useState } from "react";
 import { Root, createRoot } from "react-dom/client";
-import type ProvenancePlugin from "../main";
+import type { PluginAppAccess } from "../main";
 import type { PanelGenerationResult } from "../services/runtime";
 
 export const VIEW_TYPE = "provenance-view";
@@ -22,9 +22,10 @@ type GenerationState =
       readonly save: SaveState;
     };
 
-const PanelScreen = ({ plugin }: { readonly plugin: ProvenancePlugin }) => {
+const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => {
   const [prompt, setPrompt] = useState("");
   const [state, setState] = useState<GenerationState>({ tag: "idle" });
+  const settings = appAccess.getSettings();
 
   const submitPrompt = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -38,7 +39,7 @@ const PanelScreen = ({ plugin }: { readonly plugin: ProvenancePlugin }) => {
     setState({ tag: "loading" });
 
     try {
-      const response = await plugin.generatePanelResponse(trimmedPrompt);
+      const response = await appAccess.generatePanelResponse(trimmedPrompt);
       setState({
         tag: "success",
         response,
@@ -62,7 +63,7 @@ const PanelScreen = ({ plugin }: { readonly plugin: ProvenancePlugin }) => {
     });
 
     try {
-      const result = await plugin.saveGeneratedResponse(state.response.content);
+      const result = await appAccess.saveGeneratedResponse(state.response.content);
       setState({
         tag: "success",
         response: state.response,
@@ -111,8 +112,8 @@ const PanelScreen = ({ plugin }: { readonly plugin: ProvenancePlugin }) => {
       </form>
 
       <div className="provenance-panel__meta">
-        <span>{`Mode: ${plugin.settings.llmMode}`}</span>
-        <span>{`Output path: ${plugin.settings.llmOutputPath}`}</span>
+        <span>{`Mode: ${settings.llmMode}`}</span>
+        <span>{`Output path: ${settings.llmOutputPath}`}</span>
       </div>
 
       {state.tag === "loading" ? (
@@ -159,7 +160,7 @@ export class PanelView extends ItemView {
 
   constructor(
     leaf: WorkspaceLeaf,
-    private readonly plugin: ProvenancePlugin,
+    private readonly appAccess: PluginAppAccess,
   ) {
     super(leaf);
   }
@@ -177,7 +178,7 @@ export class PanelView extends ItemView {
     this.root = createRoot(this.contentEl);
     this.root.render(
       <StrictMode>
-        <PanelScreen plugin={this.plugin} />
+        <PanelScreen appAccess={this.appAccess} />
       </StrictMode>,
     );
   }
