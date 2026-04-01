@@ -11,7 +11,7 @@ Source: `.specs/plugin-mvp/tasks.md`
 - [x] PMVP-T3 — Add an Obsidian-backed active-note adapter
 - [x] PMVP-T4 — Thread persisted settings into runtime creation and live panel behavior
 - [x] PMVP-T5 — Separate generate-response behavior from save-artifact behavior in the engine
-- [ ] PMVP-T6 — Implement deterministic mock generation mode
+- [x] PMVP-T6 — Implement deterministic mock generation mode
 - [ ] PMVP-T7 — Implement Pi-backed generation mode behind the shared gateway contract
 - [ ] PMVP-T8 — Surface typed workflow failures to the UI
 - [ ] PMVP-T9 — Implement artifact writing from generated response to markdown file

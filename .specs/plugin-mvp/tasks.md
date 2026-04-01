@@ -115,7 +115,7 @@ Objective: Deliver the smallest end-to-end generation path from active note cont
 #### Task PMVP-T6
 
 - Title: Implement deterministic mock generation mode
-- Status: Not started
+- Status: Completed
 - Blocked by: PMVP-T3
 - Plan references:
   - Stream 2: Engine Workflow and LLM Gateway Delivery

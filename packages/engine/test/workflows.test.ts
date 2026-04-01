@@ -7,7 +7,9 @@ import {
   generateResearchArtifact,
   generateResearchResponse,
   LLMGateway,
+  makeMockResearchResponse,
   makeResearchArtifactDraft,
+  mockLLMGatewayLayer,
   saveResearchArtifact,
 } from "../src";
 
@@ -53,6 +55,60 @@ const artifactWriterLayer = Layer.succeed(
 );
 
 describe("engine workflows", () => {
+  test("mock llm gateway returns a deterministic research response from note context", async () => {
+    const result = await Effect.runPromise(
+      generateResearchResponse("Summarize the note").pipe(
+        Effect.provide(activeNoteReaderLayer),
+        Effect.provide(mockLLMGatewayLayer),
+      ),
+    );
+
+    expect(result).toEqual({
+      note: activeNote,
+      response: {
+        model: "mock-research-v1",
+        content: [
+          "# Research Brief: Example",
+          "",
+          "Source note: notes/example.md",
+          "Question: Summarize the note",
+          "",
+          "## Note Snapshot",
+          "- Title: Example",
+          "- Word count: 5",
+          "- Preview: # Example Important note context.",
+          "",
+          "## Recommended Next Steps",
+          "1. Verify the main claim in Example against the source note.",
+          "2. Expand the evidence behind: Summarize the note",
+          "3. Capture follow-up findings in a new artifact linked to notes/example.md.",
+        ].join("\n"),
+      },
+    });
+  });
+
+  test("mock llm gateway falls back to a stable prompt when no explicit question is provided", () => {
+    expect(makeMockResearchResponse({ note: activeNote })).toEqual({
+      model: "mock-research-v1",
+      content: [
+        "# Research Brief: Example",
+        "",
+        "Source note: notes/example.md",
+        "Question: No explicit research question provided.",
+        "",
+        "## Note Snapshot",
+        "- Title: Example",
+        "- Word count: 5",
+        "- Preview: # Example Important note context.",
+        "",
+        "## Recommended Next Steps",
+        "1. Verify the main claim in Example against the source note.",
+        "2. Expand the evidence behind: No explicit research question provided.",
+        "3. Capture follow-up findings in a new artifact linked to notes/example.md.",
+      ].join("\n"),
+    });
+  });
+
   test("generateResearchResponse returns generated content without requiring an artifact writer", async () => {
     const result = await Effect.runPromise(
       generateResearchResponse("Summarize the note").pipe(

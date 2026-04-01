@@ -1,5 +1,9 @@
-import { ActiveNoteReader } from "@urban/provenance-engine";
-import { Effect, ManagedRuntime } from "effect";
+import {
+  generateResearchResponse,
+  LLMGateway,
+  mockLLMGatewayLayer,
+} from "@urban/provenance-engine";
+import { Effect, Layer, ManagedRuntime } from "effect";
 import type ProvenancePlugin from "../main";
 import { makeObsidianActiveNoteReaderLayer } from "./activeNoteReader";
 
@@ -25,45 +29,52 @@ export interface PluginRuntime {
   readonly dispose: () => void;
 }
 
+const disabledLLMGatewayLayer = Layer.succeed(
+  LLMGateway,
+  LLMGateway.of({
+    generateResearch: () => Effect.die(new Error("LLM mode is disabled in plugin settings.")),
+  }),
+);
+
+const piLLMGatewayLayer = Layer.succeed(
+  LLMGateway,
+  LLMGateway.of({
+    generateResearch: () => Effect.die(new Error("Pi mode is not implemented yet.")),
+  }),
+);
+
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
 
+const makeLLMGatewayLayer = (
+  settings: RuntimeOptions["settings"],
+): Layer.Layer<LLMGateway, never, never> => {
+  switch (settings.llmMode) {
+    case "disabled":
+      return disabledLLMGatewayLayer;
+    case "mock":
+      return mockLLMGatewayLayer;
+    case "pi":
+      return piLLMGatewayLayer;
+  }
+};
+
 export const makePluginRuntime = (options: RuntimeOptions): PluginRuntime => {
-  const runtime = ManagedRuntime.make(makeObsidianActiveNoteReaderLayer(options.plugin));
-  const getActiveNoteContext = Effect.gen(function* () {
-    const noteReader = yield* ActiveNoteReader;
-    return yield* noteReader.getActiveNote;
-  });
+  const runtime = ManagedRuntime.make(
+    Layer.merge(
+      makeObsidianActiveNoteReaderLayer(options.plugin),
+      makeLLMGatewayLayer(options.settings),
+    ),
+  );
 
   return {
     generatePanelResponse: async (prompt) => {
-      const note = await runtime.runPromise(getActiveNoteContext);
-      await delay(250);
-
-      const trimmedPrompt = prompt.trim();
-      const modeLabel = options.settings.llmMode.toUpperCase();
-      const trimmedMarkdown = note.markdown.trim();
-      const notePreview =
-        trimmedMarkdown.length === 0
-          ? "The active note is empty."
-          : trimmedMarkdown.slice(0, 280);
+      const result = await runtime.runPromise(generateResearchResponse(prompt));
 
       return {
-        content: [
-          `Prompt received in ${modeLabel} mode for ${note.title}.`,
-          "",
-          `Active note path: ${note.path}`,
-          "",
-          `Question: ${trimmedPrompt}`,
-          "",
-          "Active note preview:",
-          notePreview,
-          "",
-          "This placeholder response now proves the panel can read real active-note context through the Obsidian adapter.",
-          "Engine generation and persisted artifact writes land in later MVP tasks.",
-        ].join("\n"),
+        content: result.response.content,
       };
     },
     saveGeneratedResponse: async (_response) => {
