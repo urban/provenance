@@ -12,7 +12,7 @@ Source: `.specs/plugin-mvp/tasks.md`
 - [x] PMVP-T4 — Thread persisted settings into runtime creation and live panel behavior
 - [x] PMVP-T5 — Separate generate-response behavior from save-artifact behavior in the engine
 - [x] PMVP-T6 — Implement deterministic mock generation mode
-- [ ] PMVP-T7 — Implement Pi-backed generation mode behind the shared gateway contract
+- [x] PMVP-T7 — Implement Pi-backed generation mode behind the shared gateway contract
 - [ ] PMVP-T8 — Surface typed workflow failures to the UI
 - [ ] PMVP-T9 — Implement artifact writing from generated response to markdown file
 - [ ] PMVP-T10 — Enforce guarded write boundaries before filesystem mutation

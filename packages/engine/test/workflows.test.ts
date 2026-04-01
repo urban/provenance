@@ -7,6 +7,7 @@ import {
   generateResearchArtifact,
   generateResearchResponse,
   LLMGateway,
+  makePiLLMGatewayLayer,
   makeMockResearchResponse,
   makeResearchArtifactDraft,
   mockLLMGatewayLayer,
@@ -146,5 +147,100 @@ describe("engine workflows", () => {
     expect(result).toEqual({
       path: "saved/Example Research.md",
     });
+  });
+
+  test("pi llm gateway maps a completion response through the shared contract", async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ readonly url: string; readonly init?: RequestInit }> = [];
+
+    globalThis.fetch = (async (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      requests.push({ url, init });
+
+      return new Response(
+        JSON.stringify({
+          model: "gpt-4.1-mini",
+          choices: [
+            {
+              index: 0,
+              finish_reason: "stop",
+              message: {
+                role: "assistant",
+                content: "# Pi Result\n\nShared gateway response.",
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }) satisfies typeof fetch;
+
+    try {
+      const result = await Effect.runPromise(
+        generateResearchResponse("Summarize the note").pipe(
+          Effect.provide(activeNoteReaderLayer),
+          Effect.provide(
+            makePiLLMGatewayLayer({
+              apiKey: "test-key",
+              model: "gpt-4.1-mini",
+              baseUrl: "https://example.test/v1/chat/completions",
+            }),
+          ),
+        ),
+      );
+
+      expect(result.response).toEqual({
+        model: "gpt-4.1-mini",
+        content: "# Pi Result\n\nShared gateway response.",
+      });
+      expect(requests).toHaveLength(1);
+      expect(requests[0]?.url).toBe("https://example.test/v1/chat/completions");
+      expect(requests[0]?.init?.method).toBe("POST");
+      expect(requests[0]?.init?.headers).toEqual({
+        "Content-Type": "application/json",
+        Authorization: "Bearer test-key",
+      });
+      expect(requests[0]?.init?.body).toContain('"model":"gpt-4.1-mini"');
+      expect(requests[0]?.init?.body).toContain("Research question: Summarize the note");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("pi llm gateway fails when the provider payload has no completion choices", async () => {
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: "gpt-4.1-mini",
+          choices: [],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      )) satisfies typeof fetch;
+
+    try {
+      await expect(
+        Effect.runPromise(
+          generateResearchResponse("Summarize the note").pipe(
+            Effect.provide(activeNoteReaderLayer),
+            Effect.provide(
+              makePiLLMGatewayLayer({
+                apiKey: "test-key",
+                model: "gpt-4.1-mini",
+              }),
+            ),
+          ),
+        ),
+      ).rejects.toThrow("Pi API returned no completion choices.");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

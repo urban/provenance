@@ -1,6 +1,7 @@
 import {
   generateResearchResponse,
   LLMGateway,
+  makePiLLMGatewayLayer,
   mockLLMGatewayLayer,
 } from "@urban/provenance-engine";
 import { Effect, Layer, ManagedRuntime } from "effect";
@@ -12,6 +13,8 @@ export interface RuntimeOptions {
   settings: {
     llmOutputPath: string;
     llmMode: "disabled" | "mock" | "pi";
+    piApiKey: string;
+    piModel: string;
   };
 }
 
@@ -36,17 +39,20 @@ const disabledLLMGatewayLayer = Layer.succeed(
   }),
 );
 
-const piLLMGatewayLayer = Layer.succeed(
-  LLMGateway,
-  LLMGateway.of({
-    generateResearch: () => Effect.die(new Error("Pi mode is not implemented yet.")),
-  }),
-);
-
 const delay = (milliseconds: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+
+const resolvePiApiKey = (settings: RuntimeOptions["settings"]): string => {
+  const configuredApiKey = settings.piApiKey.trim();
+
+  if (configuredApiKey.length === 0) {
+    throw new Error("Pi mode requires a Pi API key in plugin settings.");
+  }
+
+  return configuredApiKey;
+};
 
 const makeLLMGatewayLayer = (
   settings: RuntimeOptions["settings"],
@@ -57,7 +63,10 @@ const makeLLMGatewayLayer = (
     case "mock":
       return mockLLMGatewayLayer;
     case "pi":
-      return piLLMGatewayLayer;
+      return makePiLLMGatewayLayer({
+        apiKey: resolvePiApiKey(settings),
+        model: settings.piModel,
+      });
   }
 };
 
