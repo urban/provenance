@@ -1,0 +1,10 @@
+{
+  "id": "provenance",
+  "name": "Provenance",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Plugin for guarded LLM-assisted note research.",
+  "author": "Urban Faubion",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}

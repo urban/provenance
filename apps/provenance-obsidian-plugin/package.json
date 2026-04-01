@@ -1,0 +1,31 @@
+{
+  "name": "@urban/provenance-obsidian-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "bun build ./src/main.ts --outfile ./dist/main.js --target node --format cjs --external obsidian && cp manifest.json dist/ && cp src/styles.css dist/",
+    "check": "bun run lint && bun run typecheck && bun run test",
+    "clean": "rm -rf ./dist",
+    "lint": "oxfmt && oxlint --fix",
+    "test": "node -e \"console.log('No plugin tests wired yet')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@urban/provenance-engine": "0.1.0",
+    "@urban/provenance-shared": "0.1.0",
+    "effect": "4.0.0-beta.43",
+    "obsidian": "latest",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.11",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
