@@ -8,7 +8,7 @@ Source: `.specs/plugin-mvp/tasks.md`
 
 - [x] PMVP-T1 — Replace the placeholder panel with a minimal interactive prompt-and-response flow
 - [x] PMVP-T2 — Assemble the plugin runtime once and expose workflow access to commands and views
-- [ ] PMVP-T3 — Add an Obsidian-backed active-note adapter
+- [x] PMVP-T3 — Add an Obsidian-backed active-note adapter
 - [ ] PMVP-T4 — Thread persisted settings into runtime creation and live panel behavior
 - [ ] PMVP-T5 — Separate generate-response behavior from save-artifact behavior in the engine
 - [ ] PMVP-T6 — Implement deterministic mock generation mode
