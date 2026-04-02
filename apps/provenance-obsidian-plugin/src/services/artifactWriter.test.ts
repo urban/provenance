@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ArtifactDraft } from "@urban/provenance-shared";
@@ -159,5 +159,30 @@ describe("artifact writer", () => {
     await expect(
       access(join(vaultBasePath, "../outside-artifacts/example-research.md")),
     ).rejects.toBeDefined();
+  });
+
+  test("surfaces artifact write failures when the configured output root cannot be created", async () => {
+    const vaultBasePath = await mkdtemp(join(tmpdir(), "provenance-plugin-"));
+    tempDirectories.push(vaultBasePath);
+
+    const blockedRootPath = join(vaultBasePath, "existing-file");
+    await writeFile(blockedRootPath, "occupied", "utf8");
+
+    await expect(
+      Effect.runPromise(
+        saveDraftWithFileSystemArtifactWriter(
+          {
+            outputPath: "existing-file",
+            vaultBasePath,
+          },
+          artifactDraft,
+        ),
+      ),
+    ).rejects.toMatchObject({
+      _tag: "ArtifactWriteFailure",
+    });
+
+    expect(artifactDraft.body).toBe("Generated research response.");
+    await expect(access(join(blockedRootPath, "example-research.md"))).rejects.toBeDefined();
   });
 });

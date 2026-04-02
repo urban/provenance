@@ -2,31 +2,11 @@ import { IconName, ItemView, WorkspaceLeaf } from "obsidian";
 import { type FormEvent, StrictMode, useState, useSyncExternalStore } from "react";
 import { Root, createRoot } from "react-dom/client";
 import type { PluginAppAccess } from "../main";
-import type { PanelGenerationResult } from "../services/runtime";
-import {
-  describePanelGenerationError,
-  describeResearchWorkflowFailure,
-  type PanelFailureCopy,
-} from "./panelFailure";
+import { describePanelGenerationError, describeResearchWorkflowFailure } from "./panelFailure";
+import { beginSave, completeSave, failSave, type GenerationState } from "./panelState";
 import { isResearchWorkflowFailure } from "@urban/provenance-engine";
 
 export const VIEW_TYPE = "provenance-view";
-
-type SaveState =
-  | { readonly tag: "idle" }
-  | { readonly tag: "saving" }
-  | { readonly tag: "info"; readonly message: string }
-  | { readonly tag: "error"; readonly failure: PanelFailureCopy };
-
-type GenerationState =
-  | { readonly tag: "idle" }
-  | { readonly tag: "loading" }
-  | { readonly tag: "error"; readonly failure: PanelFailureCopy }
-  | {
-      readonly tag: "success";
-      readonly response: PanelGenerationResult;
-      readonly save: SaveState;
-    };
 
 const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => {
   const [prompt, setPrompt] = useState("");
@@ -71,33 +51,23 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
       return;
     }
 
-    setState({
-      tag: "success",
-      response: state.response,
-      save: { tag: "saving" },
-    });
+    setState(beginSave(state));
 
     try {
       const result = await appAccess.saveGeneratedResponse(state.response.artifactDraft);
-      setState({
-        tag: "success",
-        response: state.response,
-        save: { tag: "info", message: result.message },
-      });
+      setState(completeSave(state, result.message));
     } catch (error) {
-      setState({
-        tag: "success",
-        response: state.response,
-        save: {
-          tag: "error",
-          failure: isResearchWorkflowFailure(error)
+      setState(
+        failSave(
+          state,
+          isResearchWorkflowFailure(error)
             ? describeResearchWorkflowFailure(error)
             : {
                 title: "Save failed",
                 message: error instanceof Error ? error.message : "Save failed.",
               },
-        },
-      });
+        ),
+      );
     }
   };
 
