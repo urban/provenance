@@ -258,7 +258,7 @@ Objective: Close the MVP with real workflow validation across the candidate stor
 #### Task PMVP-T15
 
 - Title: Record the MVP storage and integration decision with final repo validation
-- Status: Not started
+- Status: Completed
 - Blocked by: PMVP-T12, PMVP-T13, PMVP-T14
 - Plan references:
   - Stream 4: Storage Evaluation and MVP Validation

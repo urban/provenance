@@ -47,3 +47,23 @@ The external-directory configuration also succeeds end to end against a temporar
 ### Evidence
 
 - Automated validation: `apps/provenance-obsidian-plugin/src/services/runtime.test.ts`
+
+## PMVP-T15: MVP Decision and Final Validation
+
+- Decision date: 2026-04-02
+- Recommended MVP storage default: keep generated artifacts inside the vault under `.provenance/knowledge/research`
+- Validation gate: `bun run check`
+
+### Decision Summary
+
+The MVP should default to the in-vault `.provenance/...` storage model. It preserves the machine-owned boundary, keeps the reported save location vault-relative, and avoids the extra setup step required by an external directory while still using the same guarded writer and collision policy. External output should remain supported as an override for operators who need stronger separation from the vault tree.
+
+Pi integration is suitable for the MVP as an optional runtime mode behind the shared `LLMGateway` contract, not as the default validation path. The adapter is now isolated behind the same workflow surface as mock mode, but deterministic mock mode remains the right default for repo validation because it is stable, credential-free, and exercises the same panel and save flow.
+
+The panel workflow is useful enough for the MVP because the same runtime path now covers active-note reads, typed generation failures, deterministic or Pi-backed generation, and guarded artifact saves. The main remaining caveat is still desktop-only: this repo-level validation does not confirm how Obsidian indexes or surfaces dot-prefixed `.provenance` folders in the file explorer, search, or graph views.
+
+### Evidence
+
+- Storage validation: `apps/provenance-obsidian-plugin/src/services/runtime.test.ts`
+- Typed workflow and gateway coverage: `packages/engine/test/workflows.test.ts`
+- Save-boundary and panel failure coverage: `apps/provenance-obsidian-plugin/src/services/artifactWriter.test.ts`, `apps/provenance-obsidian-plugin/src/ui/panelFailure.test.ts`
