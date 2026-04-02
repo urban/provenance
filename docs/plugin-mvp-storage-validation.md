@@ -23,3 +23,27 @@ The in-vault configuration succeeds end to end against a temporary vault fixture
 ### Evidence
 
 - Automated validation: `apps/provenance-obsidian-plugin/src/services/runtime.test.ts`
+
+## PMVP-T14: External Output Directory
+
+- Validation date: 2026-04-02
+- Output path under test: an absolute external directory outside the vault root
+- Validation surface: the same runtime entrypoints the Provenance panel calls, `generatePanelResponse` and `saveGeneratedResponse`
+- Runtime composition under test:
+  - Obsidian active-note adapter
+  - shared mock `LLMGateway`
+  - filesystem artifact writer with an absolute external output configuration
+
+### Observed Outcome
+
+The external-directory configuration also succeeds end to end against a temporary fixture. A markdown note at `notes/source-note.md` generated a response and saved an artifact at an absolute `external-artifacts/source-note-research.md` path outside the vault root while still honoring the configured output-root boundary.
+
+### Storage Notes
+
+- Setup friction: the external mode requires the operator to choose and maintain a machine-owned directory outside the vault instead of relying on a repo-local default such as `.provenance/...`.
+- Path safety behavior: the writer still constrains saves to the configured output root, so switching from a relative in-vault path to an absolute external path changes the storage location but does not bypass the boundary guard.
+- Browsing ergonomics: external storage cleanly separates machine-owned artifacts from the vault tree, but the panel now reports an absolute filesystem path rather than a vault-relative location, which is less convenient for manual navigation inside Obsidian.
+
+### Evidence
+
+- Automated validation: `apps/provenance-obsidian-plugin/src/services/runtime.test.ts`

@@ -96,4 +96,72 @@ describe("panel workflow runtime", () => {
       runtime.dispose();
     }
   });
+
+  test("generates and saves an artifact under an external machine-owned path", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "provenance-plugin-validation-"));
+    tempDirectories.push(tempRoot);
+
+    const vaultBasePath = join(tempRoot, "vault");
+    const externalOutputPath = join(tempRoot, "external-artifacts");
+    const notePath = join(vaultBasePath, "notes", "source-note.md");
+    const noteMarkdown = [
+      "# Source Note",
+      "",
+      "A short note about sending machine-owned artifacts to a separate location.",
+    ].join("\n");
+
+    await mkdir(join(vaultBasePath, "notes"), { recursive: true });
+    await writeFile(notePath, noteMarkdown, "utf8");
+
+    const host: ObsidianActiveNoteReaderHost = {
+      app: {
+        workspace: {
+          getActiveFile: () => ({
+            extension: "md",
+            path: "notes/source-note.md",
+            basename: "Source Note",
+          }),
+        },
+        vault: {
+          cachedRead: async () => noteMarkdown,
+        },
+      },
+    };
+
+    const runtime = makePanelWorkflowRuntime(
+      Layer.merge(
+        Layer.merge(makeObsidianActiveNoteReaderLayer(host), mockLLMGatewayLayer),
+        makeFileSystemArtifactWriterLayer({
+          outputPath: externalOutputPath,
+          vaultBasePath,
+        }),
+      ),
+    );
+
+    try {
+      const generated = await runtime.generatePanelResponse(
+        "Summarize the current note and suggest next research questions.",
+      );
+
+      const saved = await runtime.saveGeneratedResponse(generated.artifactDraft);
+
+      expect(saved).toEqual({
+        message: `Saved artifact to ${join(externalOutputPath, "source-note-research.md").replace(/\\/g, "/")}.`,
+      });
+
+      const savedArtifact = await readFile(
+        join(externalOutputPath, "source-note-research.md"),
+        "utf8",
+      );
+
+      expect(savedArtifact).toContain("# Source Note Research");
+      expect(savedArtifact).toContain("- Source note: notes/source-note.md");
+      expect(savedArtifact).toContain(
+        "- Prompt: Summarize the current note and suggest next research questions.",
+      );
+      expect(savedArtifact).toContain("## Response");
+    } finally {
+      runtime.dispose();
+    }
+  });
 });
