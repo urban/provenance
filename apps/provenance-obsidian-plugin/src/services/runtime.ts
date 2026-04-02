@@ -1,17 +1,14 @@
 import {
   InvalidConfigurationFailure,
-  generateResearchResponse,
   LLMGateway,
-  makeResearchArtifactDraft,
   makePiLLMGatewayLayer,
   mockLLMGatewayLayer,
-  saveResearchArtifact,
 } from "@urban/provenance-engine";
-import type { ArtifactDraft } from "@urban/provenance-shared";
-import { Effect, Layer, ManagedRuntime } from "effect";
+import { Effect, Layer } from "effect";
 import type ProvenancePlugin from "../main";
 import { makeObsidianActiveNoteReaderLayer } from "./activeNoteReader";
 import { makeObsidianArtifactWriterLayer } from "./artifactWriter";
+import { makePanelWorkflowRuntime, type PluginRuntime } from "./panelWorkflowRuntime";
 
 export interface RuntimeOptions {
   plugin: ProvenancePlugin;
@@ -21,21 +18,6 @@ export interface RuntimeOptions {
     piApiKey: string;
     piModel: string;
   };
-}
-
-export interface PanelGenerationResult {
-  readonly content: string;
-  readonly artifactDraft: ArtifactDraft;
-}
-
-export interface PanelSaveResult {
-  readonly message: string;
-}
-
-export interface PluginRuntime {
-  readonly generatePanelResponse: (prompt: string) => Promise<PanelGenerationResult>;
-  readonly saveGeneratedResponse: (draft: ArtifactDraft) => Promise<PanelSaveResult>;
-  readonly dispose: () => void;
 }
 
 const disabledLLMGatewayLayer = Layer.succeed(
@@ -67,35 +49,16 @@ const makeLLMGatewayLayer = (
 };
 
 export const makePluginRuntime = (options: RuntimeOptions): PluginRuntime => {
-  const runtime = ManagedRuntime.make(
+  const servicesLayer = Layer.merge(
     Layer.merge(
-      Layer.merge(
-        makeObsidianActiveNoteReaderLayer(options.plugin),
-        makeLLMGatewayLayer(options.settings),
-      ),
-      makeObsidianArtifactWriterLayer(options.plugin, options.settings.llmOutputPath),
+      makeObsidianActiveNoteReaderLayer(options.plugin),
+      makeLLMGatewayLayer(options.settings),
     ),
+    makeObsidianArtifactWriterLayer(options.plugin, options.settings.llmOutputPath),
   );
 
-  return {
-    generatePanelResponse: async (prompt) => {
-      const result = await runtime.runPromise(generateResearchResponse(prompt));
-
-      return {
-        content: result.response.content,
-        artifactDraft: makeResearchArtifactDraft(result, prompt),
-      };
-    },
-    saveGeneratedResponse: async (draft) => {
-      const result = await runtime.runPromise(saveResearchArtifact(draft));
-
-      return {
-        message: `Saved artifact to ${result.path}.`,
-      };
-    },
-    dispose: () => {
-      void runtime.dispose();
-      // reserved for subscriptions, file watchers, and Effect runtime cleanup
-    },
-  };
+  return makePanelWorkflowRuntime(servicesLayer);
 };
+
+export type { PanelGenerationResult, PanelSaveResult, PluginRuntime } from "./panelWorkflowRuntime";
+export { makePanelWorkflowRuntime } from "./panelWorkflowRuntime";

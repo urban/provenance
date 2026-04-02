@@ -6,15 +6,33 @@ import {
 } from "@urban/provenance-engine";
 import { Effect, Layer } from "effect";
 import type { ActiveNoteContext } from "@urban/provenance-shared";
-import type ProvenancePlugin from "../main";
 
 const missingActiveNoteMessage = "Open a markdown note before generating a response.";
 
-const readActiveNote = (
-  plugin: ProvenancePlugin,
+interface ActiveMarkdownFile {
+  readonly extension: string;
+  readonly path: string;
+  readonly basename: string;
+}
+
+export interface ObsidianActiveNoteReaderHost<
+  File extends ActiveMarkdownFile = ActiveMarkdownFile,
+> {
+  readonly app: {
+    readonly workspace: {
+      readonly getActiveFile: () => File | null;
+    };
+    readonly vault: {
+      readonly cachedRead: (file: File) => Promise<string>;
+    };
+  };
+}
+
+const readActiveNote = <File extends ActiveMarkdownFile>(
+  host: ObsidianActiveNoteReaderHost<File>,
 ): Effect.Effect<ActiveNoteContext, ResearchWorkflowFailure> =>
   Effect.gen(function* () {
-    const file = plugin.app.workspace.getActiveFile();
+    const file = host.app.workspace.getActiveFile();
 
     if (file === null || file.extension !== "md") {
       return yield* Effect.fail(
@@ -23,7 +41,7 @@ const readActiveNote = (
     }
 
     const markdown = yield* Effect.tryPromise({
-      try: () => plugin.app.vault.cachedRead(file),
+      try: () => host.app.vault.cachedRead(file),
       catch: (cause) =>
         new GenerationFailure({
           message:
@@ -40,12 +58,12 @@ const readActiveNote = (
     };
   });
 
-export const makeObsidianActiveNoteReaderLayer = (
-  plugin: ProvenancePlugin,
+export const makeObsidianActiveNoteReaderLayer = <File extends ActiveMarkdownFile>(
+  host: ObsidianActiveNoteReaderHost<File>,
 ): Layer.Layer<ActiveNoteReader> =>
   Layer.succeed(
     ActiveNoteReader,
     ActiveNoteReader.of({
-      getActiveNote: readActiveNote(plugin),
+      getActiveNote: readActiveNote(host),
     }),
   );

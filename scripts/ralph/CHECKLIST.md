@@ -18,6 +18,6 @@ Source: `.specs/plugin-mvp/tasks.md`
 - [x] PMVP-T10 — Enforce guarded write boundaries before filesystem mutation
 - [x] PMVP-T11 — Finalize artifact metadata and naming policy for repeat saves
 - [x] PMVP-T12 — Add semantic tests for allowed, blocked, and failed artifact saves
-- [ ] PMVP-T13 — Validate the in-vault machine-owned storage path with the real panel flow
+- [x] PMVP-T13 — Validate the in-vault machine-owned storage path with the real panel flow
 - [ ] PMVP-T14 — Validate the external output directory with the real panel flow
 - [ ] PMVP-T15 — Record the MVP storage and integration decision with final repo validation
