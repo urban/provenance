@@ -36,7 +36,7 @@ Objective: Deliver a minimal but working panel-driven flow that can invoke engin
 #### Task PMVP-T1
 
 - Title: Replace the placeholder panel with a minimal interactive prompt-and-response flow
-- Status: Not started
+- Status: Completed
 - Blocked by: None
 - Plan references:
   - Stream 1: Obsidian Runtime and Panel UX
@@ -164,7 +164,7 @@ Objective: Deliver safe markdown artifact saves that prove the human-versus-mach
 #### Task PMVP-T9
 
 - Title: Implement artifact writing from generated response to markdown file
-- Status: Not started
+- Status: Completed
 - Blocked by: PMVP-T5, PMVP-T6, PMVP-T4
 - Plan references:
   - Stream 3: Artifact Persistence and Boundary Enforcement

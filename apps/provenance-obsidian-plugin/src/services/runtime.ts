@@ -2,12 +2,16 @@ import {
   InvalidConfigurationFailure,
   generateResearchResponse,
   LLMGateway,
+  makeResearchArtifactDraft,
   makePiLLMGatewayLayer,
   mockLLMGatewayLayer,
+  saveResearchArtifact,
 } from "@urban/provenance-engine";
+import type { ArtifactDraft } from "@urban/provenance-shared";
 import { Effect, Layer, ManagedRuntime } from "effect";
 import type ProvenancePlugin from "../main";
 import { makeObsidianActiveNoteReaderLayer } from "./activeNoteReader";
+import { makeObsidianArtifactWriterLayer } from "./artifactWriter";
 
 export interface RuntimeOptions {
   plugin: ProvenancePlugin;
@@ -21,6 +25,7 @@ export interface RuntimeOptions {
 
 export interface PanelGenerationResult {
   readonly content: string;
+  readonly artifactDraft: ArtifactDraft;
 }
 
 export interface PanelSaveResult {
@@ -29,7 +34,7 @@ export interface PanelSaveResult {
 
 export interface PluginRuntime {
   readonly generatePanelResponse: (prompt: string) => Promise<PanelGenerationResult>;
-  readonly saveGeneratedResponse: (response: string) => Promise<PanelSaveResult>;
+  readonly saveGeneratedResponse: (draft: ArtifactDraft) => Promise<PanelSaveResult>;
   readonly dispose: () => void;
 }
 
@@ -44,11 +49,6 @@ const disabledLLMGatewayLayer = Layer.succeed(
       ),
   }),
 );
-
-const delay = (milliseconds: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
 
 const makeLLMGatewayLayer = (
   settings: RuntimeOptions["settings"],
@@ -69,8 +69,11 @@ const makeLLMGatewayLayer = (
 export const makePluginRuntime = (options: RuntimeOptions): PluginRuntime => {
   const runtime = ManagedRuntime.make(
     Layer.merge(
-      makeObsidianActiveNoteReaderLayer(options.plugin),
-      makeLLMGatewayLayer(options.settings),
+      Layer.merge(
+        makeObsidianActiveNoteReaderLayer(options.plugin),
+        makeLLMGatewayLayer(options.settings),
+      ),
+      makeObsidianArtifactWriterLayer(options.plugin, options.settings.llmOutputPath),
     ),
   );
 
@@ -80,13 +83,14 @@ export const makePluginRuntime = (options: RuntimeOptions): PluginRuntime => {
 
       return {
         content: result.response.content,
+        artifactDraft: makeResearchArtifactDraft(result),
       };
     },
-    saveGeneratedResponse: async (_response) => {
-      await delay(150);
+    saveGeneratedResponse: async (draft) => {
+      const result = await runtime.runPromise(saveResearchArtifact(draft));
 
       return {
-        message: `Save requested. Artifact persistence is not wired yet for ${options.settings.llmOutputPath}.`,
+        message: `Saved artifact to ${result.path}.`,
       };
     },
     dispose: () => {

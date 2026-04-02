@@ -1,4 +1,5 @@
 import { Plugin } from "obsidian";
+import type { ArtifactDraft } from "@urban/provenance-shared";
 import { registerOpenPanelCommand } from "./commands/openPanel";
 import {
   makePluginRuntime,
@@ -15,7 +16,7 @@ export interface PluginAppAccess {
   readonly getSettings: () => PersistedSettings;
   readonly subscribeSettings: (onStoreChange: () => void) => () => void;
   readonly generatePanelResponse: (prompt: string) => Promise<PanelGenerationResult>;
-  readonly saveGeneratedResponse: (response: string) => Promise<PanelSaveResult>;
+  readonly saveGeneratedResponse: (draft: ArtifactDraft) => Promise<PanelSaveResult>;
 }
 
 export default class ProvenancePlugin extends Plugin {
@@ -27,7 +28,7 @@ export default class ProvenancePlugin extends Plugin {
     getSettings: () => this.settings,
     subscribeSettings: (onStoreChange) => this.subscribeSettings(onStoreChange),
     generatePanelResponse: (prompt) => this.runGeneratePanelResponse(prompt),
-    saveGeneratedResponse: (response) => this.runSaveGeneratedResponse(response),
+    saveGeneratedResponse: (draft) => this.runSaveGeneratedResponse(draft),
   };
 
   async onload(): Promise<void> {
@@ -113,7 +114,7 @@ export default class ProvenancePlugin extends Plugin {
     return this.getRuntime().generatePanelResponse(prompt);
   }
 
-  private async runSaveGeneratedResponse(response: string): Promise<PanelSaveResult> {
-    return this.getRuntime().saveGeneratedResponse(response);
+  private async runSaveGeneratedResponse(draft: ArtifactDraft): Promise<PanelSaveResult> {
+    return this.getRuntime().saveGeneratedResponse(draft);
   }
 }

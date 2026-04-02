@@ -73,7 +73,7 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
     });
 
     try {
-      const result = await appAccess.saveGeneratedResponse(state.response.content);
+      const result = await appAccess.saveGeneratedResponse(state.response.artifactDraft);
       setState({
         tag: "success",
         response: state.response,
