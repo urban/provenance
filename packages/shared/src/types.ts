@@ -1,7 +1,14 @@
+export interface ArtifactGenerationContext {
+  prompt: string;
+  model: string;
+}
+
 export interface ArtifactDraft {
   title: string;
   body: string;
   sourceNotePath: string;
+  generatedAt: string;
+  generationContext: ArtifactGenerationContext;
 }
 
 export interface ActiveNoteContext {

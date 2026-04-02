@@ -101,8 +101,8 @@ This plan coordinates implementation of the Plugin MVP specification pack for th
 
 - [ ] Implement artifact path derivation, markdown content assembly, and successful-write result reporting inside an app-facing artifact writer adapter.
 - [ ] Enforce write-boundary checks against the configured output root before any filesystem mutation occurs.
-- [ ] Define artifact metadata shape for source note reference, timestamp, and generation context. TODO: Confirm whether markdown frontmatter or heading-plus-section metadata is preferred.
-- [ ] Add conflict-handling behavior for repeat saves from the same note. TODO: Confirm whether the MVP should prefer deterministic suffixing, timestamped filenames, or overwrite prevention.
+- [ ] Define artifact metadata shape for source note reference, timestamp, and generation context using a consistent heading-plus-section markdown format.
+- [ ] Add conflict-handling behavior for repeat saves from the same note using deterministic numeric suffixing that preserves prior artifacts.
 - [ ] Add explicit blocked-write and failed-write test coverage so path safety is demonstrated semantically.
 
 ### Stream 4: Storage Evaluation and MVP Validation

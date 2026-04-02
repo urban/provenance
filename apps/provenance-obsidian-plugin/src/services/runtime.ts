@@ -83,7 +83,7 @@ export const makePluginRuntime = (options: RuntimeOptions): PluginRuntime => {
 
       return {
         content: result.response.content,
-        artifactDraft: makeResearchArtifactDraft(result),
+        artifactDraft: makeResearchArtifactDraft(result, prompt),
       };
     },
     saveGeneratedResponse: async (draft) => {

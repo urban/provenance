@@ -32,6 +32,11 @@ const artifactDraft: ArtifactDraft = {
   title: "Example Research",
   body: llmResponse.content,
   sourceNotePath: activeNote.path,
+  generatedAt: "2026-04-02T02:15:00.000Z",
+  generationContext: {
+    prompt: "Summarize the note",
+    model: "mock-model",
+  },
 };
 
 const activeNoteReaderLayer = Layer.succeed(
@@ -188,7 +193,9 @@ describe("engine workflows", () => {
       note: activeNote,
       response: llmResponse,
     });
-    expect(makeResearchArtifactDraft(result)).toEqual(artifactDraft);
+    expect(
+      makeResearchArtifactDraft(result, "Summarize the note", artifactDraft.generatedAt),
+    ).toEqual(artifactDraft);
   });
 
   test("saveResearchArtifact persists an explicit draft without requiring note or llm services", async () => {

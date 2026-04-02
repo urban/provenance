@@ -194,7 +194,7 @@ Objective: Deliver safe markdown artifact saves that prove the human-versus-mach
 #### Task PMVP-T11
 
 - Title: Finalize artifact metadata and naming policy for repeat saves
-- Status: Not started
+- Status: Completed
 - Blocked by: PMVP-T9
 - Plan references:
   - Stream 3: Artifact Persistence and Boundary Enforcement
@@ -202,9 +202,9 @@ Objective: Deliver safe markdown artifact saves that prove the human-versus-mach
 - What to build: A concrete MVP policy for persisted artifact metadata and filename collision handling.
 - Acceptance criteria:
   - Saved artifacts include source-note reference, timestamp, and generation context in one consistent markdown format.
-  - Repeat saves from the same note follow one documented collision policy that preserves prior artifacts or clearly replaces them. TODO: Confirm final policy choice.
+  - Repeat saves from the same note follow one documented collision policy that preserves prior artifacts via deterministic numeric suffixes.
 - Notes:
-  - TODO: Confirm whether markdown frontmatter or heading-plus-section metadata is preferred.
+  - Use a heading-plus-section markdown format with a dedicated metadata section and response section for the MVP.
 
 #### Task PMVP-T12
 

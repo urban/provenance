@@ -10,6 +10,11 @@ const artifactDraft: ArtifactDraft = {
   title: "Example Research",
   body: "Generated research response.",
   sourceNotePath: "notes/example.md",
+  generatedAt: "2026-04-02T02:15:00.000Z",
+  generationContext: {
+    prompt: "Summarize the current note.",
+    model: "mock-research-v1",
+  },
 };
 
 const tempDirectories: string[] = [];
@@ -48,8 +53,13 @@ describe("artifact writer", () => {
       [
         "# Example Research",
         "",
-        "Source note: notes/example.md",
+        "## Metadata",
+        "- Source note: notes/example.md",
+        "- Generated at: 2026-04-02T02:15:00.000Z",
+        "- Generation model: mock-research-v1",
+        "- Prompt: Summarize the current note.",
         "",
+        "## Response",
         "Generated research response.",
         "",
       ].join("\n"),
@@ -76,8 +86,52 @@ describe("artifact writer", () => {
     });
 
     const savedArtifact = await readFile(join(absoluteOutputPath, "example-research.md"), "utf8");
-    expect(savedArtifact).toContain("Source note: notes/example.md");
+    expect(savedArtifact).toContain("## Metadata");
+    expect(savedArtifact).toContain("- Source note: notes/example.md");
     expect(savedArtifact).toContain("Generated research response.");
+  });
+
+  test("preserves prior artifacts by suffixing repeat saves from the same note", async () => {
+    const vaultBasePath = await mkdtemp(join(tmpdir(), "provenance-plugin-"));
+    tempDirectories.push(vaultBasePath);
+
+    const firstResult = await Effect.runPromise(
+      saveDraftWithFileSystemArtifactWriter(
+        {
+          outputPath: ".provenance/knowledge/research",
+          vaultBasePath,
+        },
+        artifactDraft,
+      ),
+    );
+
+    const secondResult = await Effect.runPromise(
+      saveDraftWithFileSystemArtifactWriter(
+        {
+          outputPath: ".provenance/knowledge/research",
+          vaultBasePath,
+        },
+        artifactDraft,
+      ),
+    );
+
+    expect(firstResult).toEqual({
+      path: ".provenance/knowledge/research/example-research.md",
+    });
+    expect(secondResult).toEqual({
+      path: ".provenance/knowledge/research/example-research-2.md",
+    });
+
+    const firstArtifact = await readFile(
+      join(vaultBasePath, ".provenance/knowledge/research/example-research.md"),
+      "utf8",
+    );
+    const secondArtifact = await readFile(
+      join(vaultBasePath, ".provenance/knowledge/research/example-research-2.md"),
+      "utf8",
+    );
+
+    expect(secondArtifact).toBe(firstArtifact);
   });
 
   test("rejects writes when a relative output path escapes the vault boundary", async () => {

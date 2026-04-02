@@ -1,5 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { access, mkdir, writeFile } from "node:fs/promises";
+import { dirname, extname, isAbsolute, join, parse, resolve } from "node:path";
 import {
   ArtifactWriter,
   ArtifactWriteFailure,
@@ -33,25 +33,82 @@ const sanitizeArtifactBasename = (value: string): string => {
   return collapsed.length > 0 ? collapsed : fallbackArtifactBasename;
 };
 
+const formatMetadataLine = (label: string, value: string): string => `- ${label}: ${value}`;
+
 const toMarkdown = (draft: ArtifactDraft): string => {
   const trimmedBody = draft.body.trim();
 
   return [
     `# ${draft.title}`,
     "",
-    `Source note: ${draft.sourceNotePath}`,
+    "## Metadata",
+    formatMetadataLine("Source note", draft.sourceNotePath),
+    formatMetadataLine("Generated at", draft.generatedAt),
+    formatMetadataLine("Generation model", draft.generationContext.model),
+    formatMetadataLine("Prompt", draft.generationContext.prompt),
     "",
+    "## Response",
     trimmedBody.length > 0 ? trimmedBody : "_No generated content._",
     "",
   ].join("\n");
 };
 
-const resolveArtifactTarget = (
+const appendCollisionSuffix = (artifactFileName: string, index: number): string => {
+  const parsedPath = parse(artifactFileName);
+  const fileExtension = extname(artifactFileName);
+  const basename = fileExtension.length > 0 ? parsedPath.name : artifactFileName;
+
+  return `${basename}-${index}${fileExtension}`;
+};
+
+const findAvailableArtifactFileName = Effect.fn("findAvailableArtifactFileName")(function* (
+  absoluteRootPath: string,
+  artifactFileName: string,
+) {
+  for (let collisionIndex = 1; collisionIndex < 10_000; collisionIndex += 1) {
+    const candidateFileName =
+      collisionIndex === 1
+        ? artifactFileName
+        : appendCollisionSuffix(artifactFileName, collisionIndex);
+    const candidateAbsolutePath = join(absoluteRootPath, candidateFileName);
+
+    const exists = yield* Effect.tryPromise({
+      try: () =>
+        access(candidateAbsolutePath)
+          .then(() => true)
+          .catch(() => false),
+      catch: (error) =>
+        new ArtifactWriteFailure({
+          message:
+            error instanceof Error
+              ? error.message
+              : `Failed to inspect artifact path ${normalizeSlashes(candidateAbsolutePath)}.`,
+        }),
+    });
+
+    if (!exists) {
+      return candidateFileName;
+    }
+  }
+
+  return yield* Effect.fail(
+    new ArtifactWriteFailure({
+      message: `Failed to derive an available artifact name under ${normalizeSlashes(absoluteRootPath)}.`,
+    }),
+  );
+});
+
+const resolveArtifactRoot = (
   options: FileSystemArtifactWriterOptions,
-  draft: ArtifactDraft,
-): Effect.Effect<ResolvedArtifactTarget, InvalidConfigurationFailure | BlockedWriteFailure> => {
+  artifactFileName: string,
+): Effect.Effect<
+  {
+    readonly absoluteRootPath: string;
+    readonly savedPathFromFileName: (fileName: string) => string;
+  },
+  InvalidConfigurationFailure | BlockedWriteFailure
+> => {
   const normalizedOutputPath = normalizeSlashes(options.outputPath.trim());
-  const artifactFileName = `${sanitizeArtifactBasename(draft.title)}.md`;
 
   if (normalizedOutputPath.length === 0) {
     return Effect.fail(
@@ -75,8 +132,7 @@ const resolveArtifactTarget = (
 
     return Effect.succeed({
       absoluteRootPath,
-      absolutePath,
-      savedPath: normalizeSlashes(absolutePath),
+      savedPathFromFileName: (fileName) => normalizeSlashes(resolve(absoluteRootPath, fileName)),
     });
   }
 
@@ -101,15 +157,25 @@ const resolveArtifactTarget = (
 
   return Effect.succeed({
     absoluteRootPath: absoluteRoot,
-    absolutePath,
-    savedPath: normalizeSlashes(join(normalizedOutputPath, artifactFileName)),
+    savedPathFromFileName: (fileName) => normalizeSlashes(join(normalizedOutputPath, fileName)),
   });
 };
 
 const writeArtifactToFileSystem = Effect.fn("writeArtifactToFileSystem")(
   (options: FileSystemArtifactWriterOptions, draft: ArtifactDraft) =>
     Effect.gen(function* () {
-      const target = yield* resolveArtifactTarget(options, draft);
+      const baseArtifactFileName = `${sanitizeArtifactBasename(draft.title)}.md`;
+      const resolvedRoot = yield* resolveArtifactRoot(options, baseArtifactFileName);
+      const artifactFileName = yield* findAvailableArtifactFileName(
+        resolvedRoot.absoluteRootPath,
+        baseArtifactFileName,
+      );
+      const absolutePath = join(resolvedRoot.absoluteRootPath, artifactFileName);
+      const target: ResolvedArtifactTarget = {
+        absoluteRootPath: resolvedRoot.absoluteRootPath,
+        absolutePath,
+        savedPath: resolvedRoot.savedPathFromFileName(artifactFileName),
+      };
 
       yield* Effect.tryPromise({
         try: () => mkdir(dirname(target.absolutePath), { recursive: true }),

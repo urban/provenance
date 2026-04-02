@@ -6,5 +6,5 @@ export const generateResearchArtifact = Effect.fn("generateResearchArtifact")(fu
   question?: string,
 ) {
   const generated = yield* generateResearchResponse(question);
-  return yield* saveResearchArtifact(makeResearchArtifactDraft(generated));
+  return yield* saveResearchArtifact(makeResearchArtifactDraft(generated, question));
 });
