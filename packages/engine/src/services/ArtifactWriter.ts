@@ -1,5 +1,6 @@
 import { Effect, Layer, ServiceMap } from "effect";
 import type { ArtifactDraft } from "@urban/provenance-shared";
+import type { ResearchWorkflowFailure } from "../errors/ResearchWorkflowFailure";
 
 export interface ArtifactWriteResult {
   readonly path: string;
@@ -8,7 +9,9 @@ export interface ArtifactWriteResult {
 export class ArtifactWriter extends ServiceMap.Service<
   ArtifactWriter,
   {
-    writeResearchArtifact(draft: ArtifactDraft): Effect.Effect<ArtifactWriteResult>;
+    writeResearchArtifact(
+      draft: ArtifactDraft,
+    ): Effect.Effect<ArtifactWriteResult, ResearchWorkflowFailure>;
   }
 >()("@urban/provenance-engine/services/ArtifactWriter") {
   static readonly writeResearchArtifact = Effect.fn("ArtifactWriter.writeResearchArtifact")(

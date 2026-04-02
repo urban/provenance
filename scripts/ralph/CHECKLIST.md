@@ -15,7 +15,7 @@ Source: `.specs/plugin-mvp/tasks.md`
 - [x] PMVP-T7 — Implement Pi-backed generation mode behind the shared gateway contract
 - [x] PMVP-T8 — Surface typed workflow failures to the UI
 - [x] PMVP-T9 — Implement artifact writing from generated response to markdown file
-- [ ] PMVP-T10 — Enforce guarded write boundaries before filesystem mutation
+- [x] PMVP-T10 — Enforce guarded write boundaries before filesystem mutation
 - [ ] PMVP-T11 — Finalize artifact metadata and naming policy for repeat saves
 - [ ] PMVP-T12 — Add semantic tests for allowed, blocked, and failed artifact saves
 - [ ] PMVP-T13 — Validate the in-vault machine-owned storage path with the real panel flow

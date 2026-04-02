@@ -12,15 +12,27 @@ export class GenerationFailure extends Data.TaggedError("GenerationFailure")<{
   readonly message: string;
 }> {}
 
+export class BlockedWriteFailure extends Data.TaggedError("BlockedWriteFailure")<{
+  readonly message: string;
+}> {}
+
+export class ArtifactWriteFailure extends Data.TaggedError("ArtifactWriteFailure")<{
+  readonly message: string;
+}> {}
+
 export type ResearchWorkflowFailure =
   | MissingActiveNoteFailure
   | InvalidConfigurationFailure
-  | GenerationFailure;
+  | GenerationFailure
+  | BlockedWriteFailure
+  | ArtifactWriteFailure;
 
 const researchWorkflowFailureTags = new Set<string>([
   "MissingActiveNoteFailure",
   "InvalidConfigurationFailure",
   "GenerationFailure",
+  "BlockedWriteFailure",
+  "ArtifactWriteFailure",
 ]);
 
 export const isResearchWorkflowFailure = (value: unknown): value is ResearchWorkflowFailure => {

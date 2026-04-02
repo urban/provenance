@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ArtifactDraft } from "@urban/provenance-shared";
@@ -78,5 +78,32 @@ describe("artifact writer", () => {
     const savedArtifact = await readFile(join(absoluteOutputPath, "example-research.md"), "utf8");
     expect(savedArtifact).toContain("Source note: notes/example.md");
     expect(savedArtifact).toContain("Generated research response.");
+  });
+
+  test("rejects writes when a relative output path escapes the vault boundary", async () => {
+    const vaultBasePath = await mkdtemp(join(tmpdir(), "provenance-plugin-"));
+    tempDirectories.push(vaultBasePath);
+
+    await expect(
+      Effect.runPromise(
+        saveDraftWithFileSystemArtifactWriter(
+          {
+            outputPath: "../outside-artifacts",
+            vaultBasePath,
+          },
+          artifactDraft,
+        ),
+      ),
+    ).rejects.toMatchObject({
+      _tag: "BlockedWriteFailure",
+      message: `Blocked artifact save outside the configured output path: ${join(
+        vaultBasePath,
+        "../outside-artifacts/example-research.md",
+      ).replace(/\\/g, "/")}`,
+    });
+
+    await expect(
+      access(join(vaultBasePath, "../outside-artifacts/example-research.md")),
+    ).rejects.toBeDefined();
   });
 });

@@ -24,6 +24,16 @@ export const describeResearchWorkflowFailure = (
         title: "Generation failed",
         message: failure.message,
       };
+    case "BlockedWriteFailure":
+      return {
+        title: "Blocked write",
+        message: failure.message,
+      };
+    case "ArtifactWriteFailure":
+      return {
+        title: "Save failed",
+        message: failure.message,
+      };
   }
 };
 

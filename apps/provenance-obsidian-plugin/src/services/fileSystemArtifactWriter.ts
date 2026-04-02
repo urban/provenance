@@ -2,10 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import {
   ArtifactWriter,
-  type ArtifactWriteResult,
+  ArtifactWriteFailure,
+  BlockedWriteFailure,
+  InvalidConfigurationFailure,
   saveResearchArtifact,
 } from "@urban/provenance-engine";
-import { normalizeSlashes, type ArtifactDraft } from "@urban/provenance-shared";
+import { isWithinBasePath, normalizeSlashes, type ArtifactDraft } from "@urban/provenance-shared";
 import { Effect, Layer } from "effect";
 
 export interface FileSystemArtifactWriterOptions {
@@ -14,6 +16,7 @@ export interface FileSystemArtifactWriterOptions {
 }
 
 interface ResolvedArtifactTarget {
+  readonly absoluteRootPath: string;
   readonly absolutePath: string;
   readonly savedPath: string;
 }
@@ -46,44 +49,95 @@ const toMarkdown = (draft: ArtifactDraft): string => {
 const resolveArtifactTarget = (
   options: FileSystemArtifactWriterOptions,
   draft: ArtifactDraft,
-): ResolvedArtifactTarget => {
+): Effect.Effect<ResolvedArtifactTarget, InvalidConfigurationFailure | BlockedWriteFailure> => {
   const normalizedOutputPath = normalizeSlashes(options.outputPath.trim());
   const artifactFileName = `${sanitizeArtifactBasename(draft.title)}.md`;
 
   if (normalizedOutputPath.length === 0) {
-    throw new Error("Set a research output path before saving artifacts.");
+    return Effect.fail(
+      new InvalidConfigurationFailure({
+        message: "Set a research output path before saving artifacts.",
+      }),
+    );
   }
 
   if (isAbsolute(normalizedOutputPath)) {
+    const absoluteRootPath = resolve(normalizedOutputPath);
     const absolutePath = resolve(normalizedOutputPath, artifactFileName);
-    return {
+
+    if (!isWithinBasePath(absoluteRootPath, absolutePath)) {
+      return Effect.fail(
+        new BlockedWriteFailure({
+          message: `Blocked artifact save outside the configured output path: ${normalizeSlashes(absolutePath)}`,
+        }),
+      );
+    }
+
+    return Effect.succeed({
+      absoluteRootPath,
       absolutePath,
       savedPath: normalizeSlashes(absolutePath),
-    };
+    });
   }
 
   const absoluteRoot = resolve(options.vaultBasePath, normalizedOutputPath);
   const absolutePath = join(absoluteRoot, artifactFileName);
 
-  return {
+  if (!isWithinBasePath(resolve(options.vaultBasePath), absoluteRoot)) {
+    return Effect.fail(
+      new BlockedWriteFailure({
+        message: `Blocked artifact save outside the configured output path: ${normalizeSlashes(absolutePath)}`,
+      }),
+    );
+  }
+
+  if (!isWithinBasePath(absoluteRoot, absolutePath)) {
+    return Effect.fail(
+      new BlockedWriteFailure({
+        message: `Blocked artifact save outside the configured output path: ${normalizeSlashes(absolutePath)}`,
+      }),
+    );
+  }
+
+  return Effect.succeed({
+    absoluteRootPath: absoluteRoot,
     absolutePath,
     savedPath: normalizeSlashes(join(normalizedOutputPath, artifactFileName)),
-  };
+  });
 };
 
-const writeArtifactToFileSystem = async (
-  options: FileSystemArtifactWriterOptions,
-  draft: ArtifactDraft,
-): Promise<ArtifactWriteResult> => {
-  const target = resolveArtifactTarget(options, draft);
+const writeArtifactToFileSystem = Effect.fn("writeArtifactToFileSystem")(
+  (options: FileSystemArtifactWriterOptions, draft: ArtifactDraft) =>
+    Effect.gen(function* () {
+      const target = yield* resolveArtifactTarget(options, draft);
 
-  await mkdir(dirname(target.absolutePath), { recursive: true });
-  await writeFile(target.absolutePath, toMarkdown(draft), "utf8");
+      yield* Effect.tryPromise({
+        try: () => mkdir(dirname(target.absolutePath), { recursive: true }),
+        catch: (error) =>
+          new ArtifactWriteFailure({
+            message:
+              error instanceof Error && error.message.trim().length > 0
+                ? error.message
+                : `Failed to create artifact directory under ${normalizeSlashes(target.absoluteRootPath)}.`,
+          }),
+      });
 
-  return {
-    path: target.savedPath,
-  };
-};
+      yield* Effect.tryPromise({
+        try: () => writeFile(target.absolutePath, toMarkdown(draft), "utf8"),
+        catch: (error) =>
+          new ArtifactWriteFailure({
+            message:
+              error instanceof Error && error.message.trim().length > 0
+                ? error.message
+                : `Failed to write artifact to ${normalizeSlashes(target.absolutePath)}.`,
+          }),
+      });
+
+      return {
+        path: target.savedPath,
+      };
+    }),
+);
 
 export const makeFileSystemArtifactWriterLayer = (
   options: FileSystemArtifactWriterOptions,
@@ -94,9 +148,7 @@ export const makeFileSystemArtifactWriterLayer = (
       writeResearchArtifact: Effect.fn("ArtifactWriter.writeResearchArtifact")(function* (
         draft: ArtifactDraft,
       ) {
-        return yield* Effect.tryPromise(() => writeArtifactToFileSystem(options, draft)).pipe(
-          Effect.orDie,
-        );
+        return yield* writeArtifactToFileSystem(options, draft);
       }),
     }),
   );

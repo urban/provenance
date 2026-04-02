@@ -3,7 +3,12 @@ import { type FormEvent, StrictMode, useState, useSyncExternalStore } from "reac
 import { Root, createRoot } from "react-dom/client";
 import type { PluginAppAccess } from "../main";
 import type { PanelGenerationResult } from "../services/runtime";
-import { describePanelGenerationError, type PanelFailureCopy } from "./panelFailure";
+import {
+  describePanelGenerationError,
+  describeResearchWorkflowFailure,
+  type PanelFailureCopy,
+} from "./panelFailure";
+import { isResearchWorkflowFailure } from "@urban/provenance-engine";
 
 export const VIEW_TYPE = "provenance-view";
 
@@ -11,7 +16,7 @@ type SaveState =
   | { readonly tag: "idle" }
   | { readonly tag: "saving" }
   | { readonly tag: "info"; readonly message: string }
-  | { readonly tag: "error"; readonly message: string };
+  | { readonly tag: "error"; readonly failure: PanelFailureCopy };
 
 type GenerationState =
   | { readonly tag: "idle" }
@@ -80,11 +85,18 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
         save: { tag: "info", message: result.message },
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Save failed.";
       setState({
         tag: "success",
         response: state.response,
-        save: { tag: "error", message },
+        save: {
+          tag: "error",
+          failure: isResearchWorkflowFailure(error)
+            ? describeResearchWorkflowFailure(error)
+            : {
+                title: "Save failed",
+                message: error instanceof Error ? error.message : "Save failed.",
+              },
+        },
       });
     }
   };
@@ -158,7 +170,8 @@ const PanelScreen = ({ appAccess }: { readonly appAccess: PluginAppAccess }) => 
 
       {state.tag === "success" && state.save.tag === "error" ? (
         <div className="provenance-panel__status" data-state="error">
-          {state.save.message}
+          <div className="provenance-panel__status-title">{state.save.failure.title}</div>
+          <p className="provenance-panel__status-message">{state.save.failure.message}</p>
         </div>
       ) : null}
     </div>

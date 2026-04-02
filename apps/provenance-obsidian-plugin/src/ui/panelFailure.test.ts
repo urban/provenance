@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ArtifactWriteFailure,
+  BlockedWriteFailure,
   GenerationFailure,
   InvalidConfigurationFailure,
   MissingActiveNoteFailure,
@@ -43,6 +45,32 @@ describe("panel failure copy", () => {
     ).toEqual({
       title: "Generation failed",
       message: "Pi API request failed with status 502.",
+    });
+  });
+
+  test("renders blocked writes with a write-boundary title", () => {
+    expect(
+      describePanelGenerationError(
+        new BlockedWriteFailure({
+          message: "Blocked artifact save outside the configured output path: /tmp/outside.md",
+        }),
+      ),
+    ).toEqual({
+      title: "Blocked write",
+      message: "Blocked artifact save outside the configured output path: /tmp/outside.md",
+    });
+  });
+
+  test("renders artifact write failures with a save-specific title", () => {
+    expect(
+      describePanelGenerationError(
+        new ArtifactWriteFailure({
+          message: "EACCES: permission denied",
+        }),
+      ),
+    ).toEqual({
+      title: "Save failed",
+      message: "EACCES: permission denied",
     });
   });
 });
